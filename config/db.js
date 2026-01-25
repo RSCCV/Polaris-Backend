@@ -34,7 +34,7 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     console.log("Establishing connection to DB")
     // await client.connect();
-    await mongoose.connect('mongodb+srv://ralfl:6mo0ZchZymy1pRUN@polarisdb.ns5hw2r.mongodb.net/?appName=PolarisDB', {
+    await mongoose.connect(process.env.URI, {
       family: 4,
       dbName: 'PolarisDB',
       serverSelectionTimeoutMS: 10000,

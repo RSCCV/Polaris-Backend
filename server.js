@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const express = require('express');
 // const {connectDB} = require('../backend/config/db.js');
 //import { db } from '../backend/config/db.js';
-const db = require('../backend/config/db'); 
+// const db = require('../backend/config/db'); 
 const authRoutes = require('./routes/auth');
 const loaderRoutes = require('./routes/loader');
 const uploadRoutes = require('./routes/upload');
