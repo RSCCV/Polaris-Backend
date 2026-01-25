@@ -3,7 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
-const db = require('../config/db.js');
+// const db = require('../config/db.js');
 
 function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
@@ -27,9 +27,9 @@ router.post('/register', async (req, res) => {
     const { username, password, SelectedFields, isUserAdmin } = req.body;
     
     // Check if user already exists
-    const existingUser = User.findOne({ username });
+    const existingUser = await User.findOne({ username });
     if (existingUser) {
-      return res.status(400).json({ message: 'Username already taken' });
+      return res.status(400).json({ message: 'Username already taken' ,username });
     }
 
     // Hash PW
@@ -68,7 +68,7 @@ router.post('/login', async (req, res) => {
   const { username, password } = req.body;
   const SECRET = process.env.JWT_SECRET; 
   try {
-    const user = User.findOne({ username });
+    const user = await User.findOne({ username });
     if (!user)
       return res.status(401).json({ message: 'Invalid username or password' });
 

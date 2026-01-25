@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Group = require('../models/Group');
 const User = require('../models/User');
-const db = require('../config/db.js');
+const Requirement = require('../models/Requirement')
 const upload = require('../MW/authMW.js');
 const SECRET = process.env.JWT_SECRET; 
 
@@ -16,7 +16,7 @@ router.post('/requestJoin', async (req, res) => {
     if (!targetGroup) {
       return res.status(400).json({ message: 'No target group to update' });
     }
-    const group = db.prepare('SELECT * FROM groups').all();
+    // const group = await Group.find();
     if (targetGroup.requests.indexOf(user) > -1) {
       return res.status(400).json({ message: 'Membership already requested' })
     }
@@ -27,7 +27,7 @@ router.post('/requestJoin', async (req, res) => {
       },
       {
         $push: {
-          "requests": user
+          requests: user
         }
       }
     );
@@ -49,7 +49,7 @@ router.post('/removeRequest', async (req, res) => {
     if (!targetGroup) {
       return res.status(400).json({ message: 'No target group to update' });
     }
-    const group = db.prepare('SELECT * FROM groups').all();
+    // const group = db.prepare('SELECT * FROM groups').all();
     if (targetGroup.requests.indexOf(user) == -1) {
       return res.status(400).json({ message: 'No request to delete' })
     }
@@ -60,7 +60,7 @@ router.post('/removeRequest', async (req, res) => {
       },
       {
         $pull: {
-          "requests": user
+          requests: user
         }
       }
     );
@@ -82,20 +82,19 @@ router.post('/updateReq', async (req,res) => {
         return res.status(400).json({ message: 'No target group' });
     }
     //TODO new DB
-    const updatedGroup = Group.updateOne(
+    const updatedGroup = await Group.updateOne(
     {
-      name: group
+      name: group,
+      "requirements.title": title
     },
     {
-      Modify: {
-        requirements:[{
-          title: title,
-          cost: cost,
-          effort: effort,
-          impact: impact,
-          status: status,
-          responsible: responsible
-        }]
+      $set: {
+          "requirements.$.title": title,
+          "requirements.$.cost": cost,
+          "requirements.$.effort": effort,
+          "requirements.$.impact": impact,
+          "requirements.$.status": status,
+          "requirements.$.responsible": responsible
       }
     }
   );
@@ -117,13 +116,13 @@ router.post('/addUsers', async (req, res) => {
     if (!targetGroup) {
       return res.status(400).json({ message: 'No target group to update' });
     }
-    Group.updateOne(
+    await Group.updateOne(
       {
         name: groupname,
       },
       {
-        Push: {
-          members: userList
+        $push: {
+          members: { $each: userList}
         }
       }
     );
@@ -139,7 +138,7 @@ router.post('/addUsers', async (req, res) => {
 router.post('/addReq', async (req, res) => {
   try {
     const { reqList, groupname } = req.body
-    const requirements = db.prepare('SELECT * FROM requirement_data').all();
+    const requirements = await Requirement.find()
     const targetGroup = await Group.findOne({ name: groupname });
     if (!targetGroup) {
       return res.status(400).json({ message: 'No target group to update' });
@@ -156,7 +155,7 @@ router.post('/addReq', async (req, res) => {
       },
       {
         $set: {
-          "requirements": [],
+          requirements: [],
         }
       }
     );
@@ -170,23 +169,25 @@ router.post('/addReq', async (req, res) => {
     //change into group entry format
     let toAdd = addedRequirements.map((req) => ({title: req.title, cost: req.cost, effort: req.effort, impact: req.impact, status: 'Nicht bearbeitet', responsible: []}))
     //TODO new DB save
-    Group.updateOne(
+    await Group.updateOne(
       {
         name: groupname,
       },
       {
-        Push: {
-          requirements: toAdd
+        $push: {
+          requirements: { $each: toAdd }
         }
       }
     );
-    Group.updateOne(
+    await Group.updateOne(
       {
         name: groupname,
       },
       {
-        Pull: {
-          requirements: toRemove
+        $pull: {
+          requirements: { 
+            title: { $in: toRemove }
+          }
         }
       }
     );
@@ -217,13 +218,13 @@ router.post('/remUserFromGroup', async (req, res) => {
     if (targetGroup.members.indexOf(username) <= -1) {
         return res.status(400).json({ message: 'User not in Group' });
     }
-    Group.updateOne(
+    await Group.updateOne(
       {
         name: groupname,
       },
       {
-        Pull: {
-          members: [username]
+        $pull: {
+          members: username
         }
       }
     );
@@ -245,7 +246,7 @@ router.post('/remGroup', async (req, res) => {
     if (!targetGroup) {
       return res.status(400).json({ message: 'Invalid Group' , req: req.body});
     }
-    Group.deleteGroup(groupname);
+    await Group.deleteOne(targetGroup);
 
     res.status(201).json({
       message: 'Group deleted successfully',
@@ -265,7 +266,7 @@ router.post('/addGroup', upload.single('file'), async (req, res) => {
      SelectedFields = [SelectedFields];
     }
 
-    let requirements = db.prepare('SELECT * FROM requirement_data').all();
+    let requirements = await Requirement.find()
 
     // Check if entry already exists
     const existingGroup = await Group.findOne({ name: Name });
@@ -286,26 +287,27 @@ router.post('/addGroup', upload.single('file'), async (req, res) => {
 
       InitialRequirements = InitialRequirements.concat(matches);
     }
-    
+
+    InitialRequirements = InitialRequirements.map((req) => (req = {...req,status: "Nicht bearbeitet"}));
 
     if(req.file !== undefined){
-      const newGroup = Group.createGroup({
-          name : Name,
-          thumbnail : req.file.buffer,
-          members : [Admin],
-          admins: [Admin],
-          fields: SelectedFields,
-          requirements: InitialRequirements,
+      const newGroup = await Group.create({
+        name : Name,
+        thumbnail : req.file.buffer,
+        members : [Admin],
+        admins: [Admin],
+        fields: SelectedFields,
+        requirements: InitialRequirements,
       });
     } else {
-        const newGroup = Group.createGroup({
-            name : Name,
-            thumbnail : null,
-            members : [Admin],
-            admins: [Admin],
-            fields: SelectedFields,
-            requirements: InitialRequirements,
-        });
+      const newGroup = await Group.create({
+        name : Name,
+        thumbnail : null,
+        members : [Admin],
+        admins: [Admin],
+        fields: SelectedFields,
+        requirements: InitialRequirements,
+      });
     }
 
         // Response
