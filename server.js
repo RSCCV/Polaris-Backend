@@ -20,7 +20,8 @@ const corsOptions = {
   origin: function (origin, callback) {
     const allowedOrigins = [
       'https://kim278.wwwdns.kim.uni-konstanz.de',
-      'http://localhost:4200'
+      'http://localhost:4200',
+      'https://polaris-backend-i8hq.onrender.com'
     ];
     
     if (!origin) return callback(null, true);
@@ -86,7 +87,7 @@ const PORT = process.env.PORT || 5000;
 try {
   // connectDB();
   app.listen(PORT, () => console.log('Server running on port ${PORT}'));
-  app.listen(PORT, () => {
+  app.listen(PORT, "https://polaris-backend-i8hq.onrender.com" , () => {
     console.log('✅ Backend running at http://localhost:${PORT}');
   });
 } catch (err) {
