@@ -20,7 +20,6 @@ router.post('/requestJoin', async (req, res) => {
     if (targetGroup.requests.indexOf(user) > -1) {
       return res.status(400).json({ message: 'Membership already requested' })
     }
-    //TODO redo for new DB save
     await Group.updateOne(
       {
         name: groupname,
@@ -53,7 +52,6 @@ router.post('/removeRequest', async (req, res) => {
     if (targetGroup.requests.indexOf(user) == -1) {
       return res.status(400).json({ message: 'No request to delete' })
     }
-    //TODO new DB save
     await Group.updateOne(
       {
         name: groupname,
@@ -81,7 +79,6 @@ router.post('/updateReq', async (req,res) => {
     if (!targetGroup) {
         return res.status(400).json({ message: 'No target group' });
     }
-    //TODO new DB
     const updatedGroup = await Group.updateOne(
     {
       name: group,
@@ -107,6 +104,36 @@ router.post('/updateReq', async (req,res) => {
     res.status(500).send(err.message,'Could not update');
   }
 });
+
+//TODO upload a user comment to db
+router.post('/uploadComment', async (req,res) => {
+    try {
+    const { group, title , comment } = req.body;
+    const targetGroup = Group.findOne({ name: group });
+    if (!targetGroup) {
+        return res.status(400).json({ message: 'No target group' });
+    }
+    const updatedGroup = await Group.updateOne(
+    {
+      name: group,
+      "requirements.title": title
+    },
+    {
+      $push: {
+          comments: comment
+      }
+    }
+  );
+        // Response
+    res.status(201).json({
+        message:'Uploaded comment',
+        req: req.body
+    });
+  } catch (err) {
+    res.status(500).send(err.message,'Could not update');
+  }
+});
+
 
 // add a list of users to specified group
 router.post('/addUsers', async (req, res) => {
@@ -147,7 +174,6 @@ router.post('/addReq', async (req, res) => {
     const groupRequirements = targetGroup.requirements.map(req => req.title)
     //filter for target requirements in full list
     const filteredRequirements = requirements.filter((requirement) => reqList.indexOf(requirement.title) > -1) //list of full objects
-    //TODO new DB
     if(filteredRequirements.length === 0){
       await Group.updateOne(
       {
@@ -168,7 +194,6 @@ router.post('/addReq', async (req, res) => {
     const toRemove = groupRequirements.filter((requirement) => filteredReqNames.indexOf(requirement) <= -1) //titles of reqs to be removed
     //change into group entry format
     let toAdd = addedRequirements.map((req) => ({title: req.title, cost: req.cost, effort: req.effort, impact: req.impact, status: 'Nicht bearbeitet', responsible: []}))
-    //TODO new DB save
     await Group.updateOne(
       {
         name: groupname,

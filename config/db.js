@@ -17,8 +17,8 @@ console.log('Mode: ',process.env.NODE_ENV);
 // MongoDB
 
 
-const { MongoClient, ServerApiVersion } = require('mongodb');
-const uri = "mongodb+srv://ralfl:6mo0ZchZymy1pRUN@polarisdb.ns5hw2r.mongodb.net/?appName=PolarisDB";
+// const { MongoClient, ServerApiVersion } = require('mongodb');
+const uri = "";
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 // const client = new MongoClient(uri, {
