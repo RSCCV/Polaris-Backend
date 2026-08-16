@@ -24,10 +24,10 @@ router.get('/protected', authenticateToken, (req, res) => {
 });
 router.post('/register', async (req, res) => {
   try {
-    const { username, password, SelectedFields, isUserAdmin } = req.body;
+    const { username, password, SelectedFields, isUserAdmin, institute } = req.body;
     
     // Check if user already exists
-    const existingUser = await User.findOne({ username });
+    const existingUser = await User.findOne({$and: [{ username },{ institute }]});
     if (existingUser) {
       return res.status(400).json({ message: 'Username already taken' ,username });
     }
@@ -48,14 +48,15 @@ router.post('/register', async (req, res) => {
       username : username,
       password: hashedPassword,
       fields: SelectedFields,  //TODO might rename here
-      accessLevel: userAcess
+      accessLevel: userAcess,
+      institute: institute
     });
 
-
+    console.log(newUser.institute)
     // Response
     res.status(201).json({
       message: 'User created successfully',
-      user: { id: newUser._id, username: newUser.username }
+      user: { id: newUser._id, username: newUser.username, institute: newUser.institute }
 
     });
   } catch (err) {

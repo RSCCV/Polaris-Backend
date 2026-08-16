@@ -4,7 +4,8 @@ const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true, unique: true },
   fields: [{type: String}],
-  accessLevel: {type: String}
+  accessLevel: {type: String},
+  institute: {type: String}
 });
 
 module.exports = mongoose.model('User', userSchema, 'users');

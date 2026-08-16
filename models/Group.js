@@ -12,7 +12,9 @@ const groupSchema = new mongoose.Schema({
     responsible: [{type: String}], } ], 
   fields: [{type: String}], 
   requests: [{type: String}], 
-  thumbnail: { type: Buffer} 
+  comments: [{type: String}],
+  thumbnail: { type: Buffer},
+  institute: {type: String}
 });
 
 module.exports = mongoose.model('Group', groupSchema);

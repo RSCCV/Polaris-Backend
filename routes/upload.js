@@ -107,28 +107,28 @@ router.post('/updateReq', async (req,res) => {
 
 //TODO upload a user comment to db
 router.post('/uploadComment', async (req,res) => {
-    try {
+  try {
     const { group, title , comment } = req.body;
     const targetGroup = Group.findOne({ name: group });
     if (!targetGroup) {
-        return res.status(400).json({ message: 'No target group' });
+      return res.status(400).json({ message: 'No target group' });
     }
-    const updatedGroup = await Group.updateOne(
-    {
-      name: group,
-      "requirements.title": title
-    },
-    {
-      $push: {
+    await Group.updateOne(
+      {
+        name: group,
+        "requirements.title": title
+      },
+      {
+        $push: {
           comments: comment
+        }
       }
-    }
-  );
-        // Response
-    res.status(201).json({
-        message:'Uploaded comment',
-        req: req.body
-    });
+    );
+      // Response
+  res.status(201).json({
+      message:'Uploaded comment',
+      req: req.body
+  });
   } catch (err) {
     res.status(500).send(err.message,'Could not update');
   }
@@ -285,7 +285,7 @@ router.post('/remGroup', async (req, res) => {
 router.post('/addGroup', upload.single('file'), async (req, res) => {
 
   try {
-    let { Admin, Name, SelectedFields} = req.body;
+    let { Admin, Name, SelectedFields, Institute} = req.body;
 
     if (!Array.isArray(SelectedFields)) {
      SelectedFields = [SelectedFields];
@@ -294,7 +294,7 @@ router.post('/addGroup', upload.single('file'), async (req, res) => {
     let requirements = await Requirement.find()
 
     // Check if entry already exists
-    const existingGroup = await Group.findOne({ name: Name });
+    const existingGroup = await Group.findOne({ $and: [{name: Name }, {institute: Institute}]});
     if (existingGroup) {
         return res.status(400).json({ message: 'Group already exists' });
     }
@@ -323,6 +323,7 @@ router.post('/addGroup', upload.single('file'), async (req, res) => {
         admins: [Admin],
         fields: SelectedFields,
         requirements: InitialRequirements,
+        institute: Institute
       });
     } else {
       const newGroup = await Group.create({
@@ -332,6 +333,7 @@ router.post('/addGroup', upload.single('file'), async (req, res) => {
         admins: [Admin],
         fields: SelectedFields,
         requirements: InitialRequirements,
+        institute: Institute
       });
     }
 
