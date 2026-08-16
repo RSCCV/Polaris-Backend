@@ -303,6 +303,11 @@ router.post('/addGroup', upload.single('file'), async (req, res) => {
         return res.status(400).json({ message: 'Invalid Admin' });
     }
 
+    const validAdmin = await User.findOne( { $and: [{ username: Admin },{ institute: Institute }]});
+    if (!validAdmin) {
+        return res.status(400).json({ message: 'Admin and group have no common institute' });
+    }
+
     let InitialRequirements = []
     let remainingRequirements = [...requirements]
     for (const field of SelectedFields){
