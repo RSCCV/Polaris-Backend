@@ -11,7 +11,6 @@ const groupSchema = new mongoose.Schema({
     status: { type: String }, 
     responsible: [{type: String}], } ], 
   fields: [{type: String}], 
-  requests: [{type: String}], 
   comments: [{type: String}],
   thumbnail: { type: Buffer},
   institute: {type: String}
