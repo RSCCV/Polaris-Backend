@@ -24,14 +24,14 @@ router.get('/protected', authenticateToken, (req, res) => {
   res.json({ message: 'You have access!', userId: req.user.userId });
 });
 
-router.get('/getAllInstitutes'), async (req, res) => {
+router.get('/getAllInstitutes', async (req, res) => {
   try {
     const institutes = await Institute.find();
     res.json(institutes);
   } catch (err) {
     res.status(500).json({err: err.message, error: 'Could not fetch institutes' });
   }
-}
+});
 
 router.post('/register', async (req, res) => {
   try {
