@@ -9,11 +9,19 @@ const groupSchema = new mongoose.Schema({
     effort: { type: Number }, 
     impact: { type: Number }, 
     status: { type: String }, 
-    responsible: [{type: String}], } ], 
+    responsible: [{type: String}],
+    timerConsumed: { type: Boolean, default: false }, } ], 
   fields: [{type: String}], 
   comments: [{type: String}],
   thumbnail: { type: Buffer},
-  institute: {type: String}
+  institute: {type: String},
+  timer: {
+    intervalValue: { type: Number, default: null },
+    status: { type: String, enum: ['off', 'running', 'paused'], default: 'off' },
+    lastTickAt: { type: Date, default: null },
+    nextTickAt: { type: Date, default: null },
+    remainingMs: { type: Number, default: null }
+  }
 });
 
 module.exports = mongoose.model('Group', groupSchema);

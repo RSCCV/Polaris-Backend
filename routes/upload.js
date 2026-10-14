@@ -4,6 +4,7 @@ const Group = require('../models/Group');
 const User = require('../models/User');
 const Requirement = require('../models/Requirement')
 const upload = require('../MW/authMW.js');
+const { userIsAdmin, applyTimerChange } = require('../timers/groupTimer');
 const SECRET = process.env.JWT_SECRET; 
 
 
@@ -282,6 +283,30 @@ router.post('/remGroup', async (req, res) => {
   }
 });
 
+router.post('/updateTimer', async (req, res) => {
+  try {
+    const { groupname, user, intervalValue, intervalUnit, action } = req.body;
+    const targetGroup = await Group.findOne({ name: groupname });
+    if (!targetGroup) {
+      return res.status(400).json({ message: 'No target group to update' });
+    }
+    if (!(await userIsAdmin(user, targetGroup))) {
+      return res.status(403).json({ message: 'Admin rights required' });
+    }
+    const updatedGroup = await applyTimerChange(targetGroup, {
+      intervalValue,
+      intervalUnit,
+      action
+    });
+    res.status(201).json({
+      message: 'Updated timer',
+      timer: updatedGroup.timer
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Could not update timer' });
+  }
+});
+
 router.post('/addGroup', upload.single('file'), async (req, res) => {
 
   try {
@@ -328,7 +353,15 @@ router.post('/addGroup', upload.single('file'), async (req, res) => {
         admins: [Admin],
         fields: SelectedFields,
         requirements: InitialRequirements,
-        institute: Institute
+        institute: Institute,
+        timer: {
+          intervalValue: null,
+          intervalUnit: 'days',
+          status: 'off',
+          lastTickAt: null,
+          nextTickAt: null,
+          remainingMs: null
+        }
       });
     } else {
       const newGroup = await Group.create({
@@ -338,7 +371,15 @@ router.post('/addGroup', upload.single('file'), async (req, res) => {
         admins: [Admin],
         fields: SelectedFields,
         requirements: InitialRequirements,
-        institute: Institute
+        institute: Institute,
+        timer: {
+          intervalValue: null,
+          intervalUnit: 'days',
+          status: 'off',
+          lastTickAt: null,
+          nextTickAt: null,
+          remainingMs: null
+        }
       });
     }
 

@@ -9,7 +9,8 @@ const requirementSchema = new mongoose.Schema({
     effort: { type: Number }, 
     impact: { type: Number }, 
     category: { type: String },
-    title: { type: String }
+    title: { type: String },
+    comments: [{type: String}]
 });
 
 module.exports = mongoose.model('Requirement', requirementSchema, 'requirements');

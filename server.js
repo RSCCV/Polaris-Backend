@@ -7,6 +7,7 @@ const express = require('express');
 const authRoutes = require('./routes/auth');
 const loaderRoutes = require('./routes/loader');
 const uploadRoutes = require('./routes/upload');
+const { startScheduler } = require('./timers/groupTimer');
 const cors = require('cors');
 
 const path = require('path');
@@ -90,6 +91,7 @@ try {
   app.listen(PORT, "https://polaris-backend-i8hq.onrender.com" , () => {
     console.log('✅ Backend running at http://localhost:${PORT}');
   });
+  startScheduler().catch((err) => console.error('Failed to start group timers', err));
 } catch (err) {
   console.error('❌ Failed to connect to DB:', err);
 }
