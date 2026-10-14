@@ -3,6 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
+const Institute = require('../models/Institute')
 // const db = require('../config/db.js');
 
 function authenticateToken(req, res, next) {
@@ -22,6 +23,16 @@ function authenticateToken(req, res, next) {
 router.get('/protected', authenticateToken, (req, res) => {
   res.json({ message: 'You have access!', userId: req.user.userId });
 });
+
+router.get('/getAllInstitutes'), async (req, res) => {
+  try {
+    const institutes = await Institute.find();
+    res.json(institutes);
+  } catch (err) {
+    res.status(500).json({err: err.message, error: 'Could not fetch institutes' });
+  }
+}
+
 router.post('/register', async (req, res) => {
   try {
     const { username, password, SelectedFields, isUserAdmin, institute } = req.body;
