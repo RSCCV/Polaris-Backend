@@ -2,24 +2,17 @@ const mongoose = require('mongoose');
 const Group = require('../models/Group');
 const User = require('../models/User');
 
-const UNIT_MS = {
-  minutes: 60 * 1000,
-  hours: 60 * 60 * 1000,
-  days: 24 * 60 * 60 * 1000,
-  weeks: 7 * 24 * 60 * 60 * 1000
-};
+
 const MAX_TIMEOUT = 24 * 60 * 60 * 1000;
 const timeouts = new Map();
 
-function intervalToMs(value, unit) {
+function intervalToMs(value) {
   const amount = Number(value);
   if (!Number.isFinite(amount) || amount <= 0) {
     throw new Error('Interval must be a positive number');
   }
-  const factor = UNIT_MS[unit];
-  if (!factor) {
-    throw new Error('Invalid interval unit');
-  }
+  const factor = 24 * 60 * 60 * 1000; //ms to days
+
   return Math.floor(amount * factor);
 }
 
@@ -97,7 +90,7 @@ async function handleTick(groupId) {
     return;
   }
   await onGroupInterval(group);
-  const ms = intervalToMs(timer.intervalValue, timer.intervalUnit);
+  const ms = intervalToMs(timer.intervalValue);
   const now = new Date();
   timer.lastTickAt = now;
   timer.nextTickAt = new Date(now.getTime() + ms);
@@ -111,10 +104,8 @@ async function applyTimerChange(group, { intervalValue, intervalUnit, action }) 
   const now = Date.now();
 
   if (action === 'set') {
-    const unit = intervalUnit || timer.intervalUnit || 'days';
-    const ms = intervalToMs(intervalValue, unit);
+    const ms = intervalToMs(intervalValue);
     timer.intervalValue = Number(intervalValue);
-    timer.intervalUnit = unit;
     if (timer.status === 'running') {
       timer.nextTickAt = new Date(now + ms);
       timer.remainingMs = null;
@@ -126,10 +117,7 @@ async function applyTimerChange(group, { intervalValue, intervalUnit, action }) 
     if (intervalValue != null && intervalValue !== '') {
       timer.intervalValue = Number(intervalValue);
     }
-    if (intervalUnit) {
-      timer.intervalUnit = intervalUnit;
-    }
-    const ms = intervalToMs(timer.intervalValue, timer.intervalUnit);
+    const ms = intervalToMs(timer.intervalValue);
     timer.status = 'running';
     timer.nextTickAt = new Date(now + ms);
     timer.remainingMs = null;
@@ -147,7 +135,7 @@ async function applyTimerChange(group, { intervalValue, intervalUnit, action }) 
     }
     const remaining = timer.remainingMs != null
       ? timer.remainingMs
-      : intervalToMs(timer.intervalValue, timer.intervalUnit);
+      : intervalToMs(timer.intervalValue);
     timer.status = 'running';
     timer.nextTickAt = new Date(now + remaining);
     timer.remainingMs = null;
