@@ -27,9 +27,48 @@ async function userIsAdmin(username, group) {
   return !!(user && (user.accessLevel === 'admin' || user.accessLevel === 'superuser'));
 }
 
+const CLOSED_STATUSES = ['Fertig', 'Nicht relevant'];
+const OVERDUE_STATUS = '\u00dcberf\u00e4llig'; // "Überfällig"
+
+// Werte ausserhalb des gueltigen Bereichs zaehlen als 1 (wie im Frontend)
+function clampValue(value, min, max) {
+  const n = Number(value);
+  return (n >= min && n <= max) ? n : 1;
+}
+
+function priorityOf(req) {
+  return clampValue(req.cost, 1, 3) * clampValue(req.effort, 1, 3) * clampValue(req.impact, 1, 5);
+}
+
+// Hoechste Prioritaet zuerst, bei Gleichstand alphabetisch nach Titel
+function comparePriority(a, b) {
+  const diff = priorityOf(b) - priorityOf(a);
+  if (diff !== 0) {
+    return diff;
+  }
+  return String(a.title || '').localeCompare(String(b.title || ''));
+}
+
+// Kriterien, die noch in der Warteschlange des Timers stehen
+function isQueued(req) {
+  return !req.timerConsumed
+    && CLOSED_STATUSES.indexOf(req.status) === -1
+    && req.status !== OVERDUE_STATUS;
+}
+
 async function onGroupInterval(group) {
   // Called every time a group's configured interval elapses while the timer is running.
-  console.log(`Group timer tick for ${group.name}`);
+  // Das naechste faellige Kriterium (hoechste Prioritaet) wird auf "Ueberfaellig" gesetzt.
+  // Kriterien mit Status "Fertig" / "Nicht relevant" werden uebersprungen.
+  const next = (group.requirements || []).filter(isQueued).sort(comparePriority)[0];
+  if (!next) {
+    console.log(`Group timer tick for ${group.name}: no open requirement left`);
+    return null;
+  }
+  next.status = OVERDUE_STATUS;
+  next.timerConsumed = true;
+  console.log(`Group timer tick for ${group.name}: "${next.title}" is now overdue`);
+  return next;
 }
 
 function clearGroupTimeout(groupId) {
@@ -152,6 +191,22 @@ async function applyTimerChange(group, { intervalValue, intervalUnit, action }) 
   return group;
 }
 
+// Loest den Timer einmal manuell aus (wie ein regulaerer Ablauf).
+// Laeuft der Timer, beginnt das Intervall danach von vorne.
+async function triggerGroupNow(group) {
+  const timer = ensureTimer(group);
+  const changed = await onGroupInterval(group);
+  if (timer.status === 'running') {
+    const now = new Date();
+    timer.lastTickAt = now;
+    timer.nextTickAt = new Date(now.getTime() + intervalToMs(timer.intervalValue));
+    timer.remainingMs = null;
+  }
+  await group.save();
+  scheduleGroup(group);
+  return { group, changed };
+}
+
 async function startScheduler() {
   if (mongoose.connection.readyState !== 1) {
     mongoose.connection.once('open', () => {
@@ -168,6 +223,7 @@ module.exports = {
   userIsAdmin,
   onGroupInterval,
   applyTimerChange,
+  triggerGroupNow,
   startScheduler,
   scheduleGroup
 };

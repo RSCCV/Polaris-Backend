@@ -4,7 +4,8 @@ const Group = require('../models/Group');
 const User = require('../models/User');
 const Requirement = require('../models/Requirement')
 const upload = require('../MW/authMW.js');
-const { userIsAdmin, applyTimerChange } = require('../timers/groupTimer');
+const { userIsAdmin, applyTimerChange, triggerGroupNow } = require('../timers/groupTimer');
+const jwt = require('jsonwebtoken');
 const SECRET = process.env.JWT_SECRET; 
 
 
@@ -304,6 +305,41 @@ router.post('/updateTimer', async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ error: err.message || 'Could not update timer' });
+  }
+});
+
+// Timer einmal manuell ausloesen - nur fuer Superuser (per Login-Token geprueft)
+router.post('/triggerTimer', async (req, res) => {
+  try {
+    const token = req.headers['authorization']?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: 'Token required' });
+    }
+    let payload;
+    try {
+      payload = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (e) {
+      return res.status(403).json({ message: 'Invalid token' });
+    }
+    const username = payload && payload.user ? payload.user.username : null;
+    const requestingUser = username ? await User.findOne({ username }) : null;
+    if (!requestingUser || requestingUser.accessLevel !== 'superuser') {
+      return res.status(403).json({ message: 'Superuser rights required' });
+    }
+
+    const { groupname } = req.body;
+    const targetGroup = await Group.findOne({ name: groupname });
+    if (!targetGroup) {
+      return res.status(400).json({ message: 'No target group to update' });
+    }
+    const { group, changed } = await triggerGroupNow(targetGroup);
+    res.status(201).json({
+      message: changed ? 'Timer triggered' : 'Timer triggered, no open requirement left',
+      timer: group.timer,
+      requirement: changed ? { title: changed.title, status: changed.status } : null
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Could not trigger timer' });
   }
 });
 
