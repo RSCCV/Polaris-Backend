@@ -334,7 +334,7 @@ router.post('/triggerTimer', async (req, res) => {
     }
     const { group, changed } = await triggerGroupNow(targetGroup);
     res.status(201).json({
-      message: changed ? 'Timer triggered' : 'Timer triggered, no open requirement left',
+      message: changed ? 'Timer triggered, requirement is now overdue' : 'Timer triggered, no requirement became overdue',
       timer: group.timer,
       requirement: changed ? { title: changed.title, status: changed.status } : null
     });

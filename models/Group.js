@@ -20,7 +20,8 @@ const groupSchema = new mongoose.Schema({
     status: { type: String, enum: ['off', 'running', 'paused'], default: 'off' },
     lastTickAt: { type: Date, default: null },
     nextTickAt: { type: Date, default: null },
-    remainingMs: { type: Number, default: null }
+    remainingMs: { type: Number, default: null },
+    currentTitle: { type: String, default: null } // Kriterium, das beim naechsten Ablauf dran ist
   }
 });
 

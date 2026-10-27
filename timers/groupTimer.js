@@ -56,19 +56,50 @@ function isQueued(req) {
     && req.status !== OVERDUE_STATUS;
 }
 
+// Offenes Kriterium mit der hoechsten Prioritaet, das noch nicht dran war
+function pickNextRequirement(group) {
+  return (group.requirements || []).filter(isQueued).sort(comparePriority)[0] || null;
+}
+
+// Das aktuell ablaufende Kriterium. Es wird in timer.currentTitle festgehalten,
+// damit es auch dann "dran" bleibt, wenn es vor dem Ablauf auf "Fertig" gesetzt wird.
+function resolveCurrentRequirement(group) {
+  const timer = ensureTimer(group);
+  if (timer.currentTitle) {
+    const current = (group.requirements || []).find(
+      (req) => req.title === timer.currentTitle && !req.timerConsumed
+    );
+    if (current) {
+      return current;
+    }
+  }
+  const next = pickNextRequirement(group);
+  timer.currentTitle = next ? next.title : null;
+  return next;
+}
+
 async function onGroupInterval(group) {
   // Called every time a group's configured interval elapses while the timer is running.
-  // Das naechste faellige Kriterium (hoechste Prioritaet) wird auf "Ueberfaellig" gesetzt.
-  // Kriterien mit Status "Fertig" / "Nicht relevant" werden uebersprungen.
-  const next = (group.requirements || []).filter(isQueued).sort(comparePriority)[0];
-  if (!next) {
+  // Das aktuell ablaufende Kriterium ist jetzt dran:
+  //  - Status "Fertig" / "Nicht relevant": nichts passiert, die anderen ruecken nur auf
+  //  - sonst: Status wird "Ueberfaellig"
+  // Danach wird das naechste Kriterium (hoechste Prioritaet) zum aktuellen.
+  const timer = ensureTimer(group);
+  const current = resolveCurrentRequirement(group);
+  if (!current) {
     console.log(`Group timer tick for ${group.name}: no open requirement left`);
     return null;
   }
-  next.status = OVERDUE_STATUS;
-  next.timerConsumed = true;
-  console.log(`Group timer tick for ${group.name}: "${next.title}" is now overdue`);
-  return next;
+  current.timerConsumed = true;
+  const wasClosed = CLOSED_STATUSES.indexOf(current.status) !== -1;
+  if (!wasClosed) {
+    current.status = OVERDUE_STATUS;
+  }
+  const next = pickNextRequirement(group);
+  timer.currentTitle = next ? next.title : null;
+  console.log(`Group timer tick for ${group.name}: "${current.title}" ` +
+    (wasClosed ? 'was already done' : 'is now overdue'));
+  return wasClosed ? null : current;
 }
 
 function clearGroupTimeout(groupId) {
@@ -160,6 +191,8 @@ async function applyTimerChange(group, { intervalValue, intervalUnit, action }) 
     timer.status = 'running';
     timer.nextTickAt = new Date(now + ms);
     timer.remainingMs = null;
+    timer.currentTitle = null;
+    resolveCurrentRequirement(group);
   } else if (action === 'pause') {
     if (timer.status !== 'running') {
       throw new Error('Timer is not running');
@@ -182,8 +215,12 @@ async function applyTimerChange(group, { intervalValue, intervalUnit, action }) 
     timer.status = 'off';
     timer.nextTickAt = null;
     timer.remainingMs = null;
+    timer.currentTitle = null;
   } else {
     throw new Error('Unknown timer action');
+  }
+  if (timer.status !== 'off') {
+    resolveCurrentRequirement(group);
   }
 
   await group.save();
@@ -215,6 +252,12 @@ async function startScheduler() {
     return;
   }
   const groups = await Group.find({ 'timer.status': 'running' });
+  for (const group of groups) {
+    if (!group.timer.currentTitle) {
+      resolveCurrentRequirement(group);
+      await group.save();
+    }
+  }
   groups.forEach(scheduleGroup);
   console.log(`Group timers started (${groups.length} running)`);
 }
